@@ -4,3 +4,6 @@ TARGET=gemm_core_test.out
 
 $(TARGET):test.cu gemm_core.cuh
 	$(NVCC) $(NVCCFLAGS) -o $@ $<
+
+clean:
+	rm -f $(TARGET)
