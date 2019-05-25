@@ -106,18 +106,14 @@ __global__ void test_gemm_16x16_kernel(T* const c, const T* const a, const T* co
 
 template <>
 __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* const a, const float* const b, const std::size_t m, const std::size_t n, const std::size_t k){
-	constexpr std::size_t num_blocks_per_grid = block_size / warp_size;
-	const std::size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 	constexpr std::size_t dim = 64;
 	const auto num_m_blocks = (m + dim - 1) / dim;
-	const auto num_n_blocks = (n + dim - 1) / dim;
 	const auto num_k_blocks = (k + dim - 1) / dim;
-	const auto matrix_id = tid / warp_size;
-	const unsigned unique_id = tid & (warp_size - 1); 
+	const auto matrix_id = blockIdx.x;
+	const unsigned unique_id = threadIdx.x & (warp_size - 1); 
 
-	const std::size_t block_m = matrix_id / (num_n_blocks * num_k_blocks);
-	const std::size_t block_n = (matrix_id % (num_n_blocks * num_k_blocks)) / num_k_blocks;
-	//const std::size_t block_k = (matrix_id % (num_n_blocks * num_k_blocks)) % num_k_blocks;
+	const std::size_t block_m = matrix_id % num_m_blocks;
+	const std::size_t block_n = matrix_id / num_m_blocks;
 
 	__shared__ float shared_a[16 * 16 * 4 * 4];
 	__shared__ float shared_b[16 * 16 * 4 * 4];
@@ -126,31 +122,35 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 
 	for(std::size_t ik = 0; ik < num_k_blocks; ik++){
 		// Load C
+		const auto block_m_start = block_m * dim;
+		const auto block_n_start = block_n * dim;
+		const auto block_k_start = ik * dim;
 		load64x64<float, 1>(shared_c,
 				c, m, n,
-				block_m * dim, block_n * dim,
+				block_m_start, block_n_start,
 				unique_id);
 		// Load A
 		load64x64<float, 1>(shared_a,
 				a, m, k,
-				ik * dim, block_n * dim,
+				block_m_start, block_k_start,
 				unique_id);
 		// Load B
 		load64x64<float, 1>(shared_b,
 				b, k, n,
-				block_m * dim, ik * dim,
+				block_k_start, block_n_start,
 				unique_id);
-		__syncthreads();
 
-		for(unsigned i = 0; i < 16 / (block_size/warp_size); i++){
-			const auto sub_block_m = 2 * i + (matrix_id & 0x3) / 4;
-			const auto sub_block_n = matrix_id & 0x3;
+		__syncthreads();
+		constexpr std::size_t num_blocks_per_grid = block_size / warp_size;
+		for(unsigned i = 0; i < 16 / num_blocks_per_grid; i++){
+			const auto sub_block_m = 2 * i + (threadIdx.x >> 5) / 4;
+			const auto sub_block_n = (threadIdx.x >> 5) & 0x3;
 			for(unsigned j = 0; j < (64/16); j++){
 				gemm_core16x16<float, 1>(
 						shared_c + sub_block_n * dim * 16 + sub_block_m * 16,
 						shared_a + sub_block_m * 16 + j * (dim * 16),
 						shared_b + j * 16 + sub_block_n * (dim * 16),
-						dim, tid & 0x1f);
+						dim, unique_id);
 			}
 		}
 
