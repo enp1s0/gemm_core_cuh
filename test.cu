@@ -57,17 +57,29 @@ __device__ void load64x64<float, 1>(
 		const unsigned unique_id
 		){
 	constexpr std::size_t dim = 64;
-	for(unsigned i = 0; i < dim; i++){
-		const auto load_n = start_n + i;
+	if(start_m + dim >= m || start_n + dim >= n){
+		for(unsigned i = 0; i < dim; i++){
+			const auto load_n = start_n + i;
 
-		for(unsigned j = 0; j < dim; j += warp_size){
-			const auto load_m = start_m + j + unique_id;
-			float tmp = 0.0f;
-			if(load_m < m && load_n < n){
-				tmp = src[load_m + load_n * m];
+			for(unsigned j = 0; j < dim; j += warp_size){
+				const auto load_m = start_m + j + unique_id;
+				float tmp = 0.0f;
+				if(load_m < m && load_n < n){
+					tmp = src[load_m + load_n * m];
+				}
+
+				dst[j + unique_id + i * dim] = tmp;
 			}
+		}
+	}else{
+		for(unsigned i = 0; i < dim; i++){
+			const auto load_n = start_n + i;
 
-			dst[j + unique_id + i * dim] = tmp;
+			for(unsigned j = 0; j < dim; j += warp_size){
+				const auto load_m = start_m + j + unique_id;
+				
+				dst[j + unique_id + i * dim] = src[load_m + load_n * m];
+			}
 		}
 	}
 }
