@@ -100,15 +100,27 @@ __device__ void store64x64<float, 1>(
 		const unsigned unique_id
 		){
 	constexpr std::size_t dim = 64;
-	for(unsigned i = 0; i < dim; i++){
-		const auto load_n = start_n + i;
-		if(load_n >= n) return;
+	if(start_m + dim >= m || start_n + dim >= n){
+		for(unsigned i = 0; i < dim; i++){
+			const auto load_n = start_n + i;
+			if(load_n >= n) return;
 
-		for(unsigned j = 0; j < dim; j += warp_size){
-			const auto load_m = start_m + j + unique_id;
-			if(load_m >= m) break;
+			for(unsigned j = 0; j < dim; j += warp_size){
+				const auto load_m = start_m + j + unique_id;
+				if(load_m >= m) break;
 
-			dst[load_m + load_n * m] = src[j + unique_id + i * dim];
+				dst[load_m + load_n * m] = src[j + unique_id + i * dim];
+			}
+		}
+	}else{
+		for(unsigned i = 0; i < dim; i++){
+			const auto load_n = start_n + i;
+
+			for(unsigned j = 0; j < dim; j += warp_size){
+				const auto load_m = start_m + j + unique_id;
+
+				dst[load_m + load_n * m] = src[j + unique_id + i * dim];
+			}
 		}
 	}
 }
