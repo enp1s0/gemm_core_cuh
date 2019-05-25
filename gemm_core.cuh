@@ -7,46 +7,20 @@ __device__ void gemm_core16x16(T* const c, const T* const a, const T* const b, c
 
 template<>
 __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
-	const unsigned x = unique_id >> 1;
-	const unsigned y_start = (unique_id & 0x1) << 3;
-#pragma unroll
-	for(unsigned p = 0; p < 8; p++){
-		const auto y = y_start + p;
+	const auto lane = unique_id >> 4;
+	for(auto i = 0; i < 16; i+= 2){
+		const auto x = i + lane;
+		const auto y = unique_id & 0xf;
+
 		float sum = 0.0f;
-#pragma unroll
-		for(unsigned i = 0; i < 4; i++){
-			const float4 b4 = *reinterpret_cast<const float4*>(b  + x * ldm + i * 4);
-			sum += b4.x * a[y + (i * 4 + 0) * ldm];
-			sum += b4.y * a[y + (i * 4 + 1) * ldm];
-			sum += b4.z * a[y + (i * 4 + 2) * ldm];
-			sum += b4.w * a[y + (i * 4 + 3) * ldm];
+		for(unsigned k = 0; k < 16; k += 4){
+			const float4 b4 = *reinterpret_cast<const float4*>(b  + x * ldm + k);
+			sum += a[(k + 0) * ldm + y] * b4.x;
+			sum += a[(k + 1) * ldm + y] * b4.y;
+			sum += a[(k + 2) * ldm + y] * b4.z;
+			sum += a[(k + 3) * ldm + y] * b4.w;
 		}
-		c[y + x * ldm] += sum;
+		c[x * ldm + y] += sum;
 	}
 }
-
-template<class T, std::size_t num_warps> 
-__device__ void gemm_tn_core16x16(T* const c, const T* const a, const T* const b, const unsigned ldm, const unsigned unique_id) {}
-
-template<>
-__device__ void gemm_tn_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
-	const unsigned x = unique_id >> 1;
-	const unsigned y_start = (unique_id & 0x1) << 3;
-#pragma unroll
-	for(unsigned p = 0; p < 8; p++){
-		const auto y = y_start + p;
-		float sum = 0.0f;
-#pragma unroll
-		for(unsigned i = 0; i < 4; i++){
-			const float4 b4 = *reinterpret_cast<const float4*>(b  + x * ldm + i * 4);
-			const float4 a4 = *reinterpret_cast<const float4*>(a  + y * ldm + i * 4);
-			sum += b4.x * a4.x;
-			sum += b4.y * a4.y;
-			sum += b4.z * a4.z;
-			sum += b4.w * a4.w;
-			c[y + x * ldm] += sum;
-		}
-	}
-}
-
 #endif /* end of include guard */
