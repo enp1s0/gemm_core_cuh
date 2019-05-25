@@ -1,16 +1,35 @@
 #include <iostream>
 #include <random>
 #include <chrono>
+#include <cutf/cublas.hpp>
 #include <cutf/memory.hpp>
 #include <cutf/error.hpp>
+#include <cutf/type.hpp>
 #include "gemm_core.cuh"
 
-constexpr std::size_t m = (1 << 14) - 1;
-constexpr std::size_t n = (1 << 14) - 1;
-constexpr std::size_t k = (1 << 14) - 1;
+constexpr std::size_t m = (1 << 15) - 1;
+constexpr std::size_t n = (1 << 15) - 1;
+constexpr std::size_t k = (1 << 11) - 1;
 
 constexpr std::size_t warp_size = 32;
 constexpr std::size_t block_size = 256;
+
+template <class T>
+__device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
+	if(name != nullptr) printf("%s = \n", name);
+	for(int i = 0; i < m; i++){
+		for(int j = 0; j < n; j++){
+			const auto val = cutf::type::cast<float>(ptr[j * m + i]);
+			if(val < 0.0f){
+				printf("%.5f ", val);
+			}else{
+				printf(" %.5f ", val);
+			}
+		}
+		printf("\n");
+	}
+}
+
 
 template <class T>
 void print_gemm_info(const std::size_t m, const std::size_t n, const std::size_t k, const std::size_t grid_size, std::size_t block_size, double elapsed_time){
@@ -18,6 +37,7 @@ void print_gemm_info(const std::size_t m, const std::size_t n, const std::size_t
 	std::cout<<"Memory      : "<<((m * n + n * k + k * m) * sizeof(T) / (1024.0 * 1024.0))<<" MB"<<std::endl;
 	std::cout<<"Grid size   : "<<grid_size<<std::endl;
 	std::cout<<"Block size  : "<<block_size<<std::endl;
+	std::cout<<"Elapsed time: "<<elapsed_time<<" [s]"<<std::endl;
 	std::cout<<"Performance : "<<(m * n * k * 2 / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) <<" TFLOPS"<<std::endl;
 }
 
@@ -161,10 +181,9 @@ void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::
 template <>
 void test_gemm_16x16<float, 1>(float* const c, const float* const a, const float* const b, const std::size_t m, const std::size_t n, const std::size_t k){
 	constexpr std::size_t dim = 64;
-	constexpr std::size_t C = 2;
+	constexpr std::size_t C = 1;
 	const auto num_m_blocks = (m + dim - 1) / dim;
 	const auto num_n_blocks = (n + dim - 1) / dim;
-	const auto num_k_blocks = (k + dim - 1) / dim;
 
 	const auto grid_size = num_n_blocks * num_m_blocks;
 
