@@ -244,5 +244,31 @@ int main(){
 
 	test_gemm_16x16<float, 1>(d_c.get(), d_a.get(), d_b.get(), m, n, k);
 
-	cutf::memory::copy(d_c.get(), h_c.get(), m * n);
+	cutf::memory::copy(h_c.get(), d_c.get(), m * n);
+	float c_norm = 0.0f;
+	for(std::size_t i = 0; i < m * n; i++){
+		c_norm += h_c.get()[i] * h_c.get()[i];
+	}
+
+	// Validation
+	auto cublas = cutf::cublas::get_cublas_unique_ptr();
+	float alpha = 1.0f, beta = -1.0f;
+	CUTF_HANDLE_ERROR(
+			cutf::cublas::gemm(*cublas.get(),
+				CUBLAS_OP_N, CUBLAS_OP_N,
+				m, n, k,
+				&alpha,
+				d_a.get(), m,
+				d_b.get(), k,
+				&beta,
+				d_c.get(), m
+			));
+	cutf::memory::copy(h_c.get(), d_c.get(), m * n);
+
+	float error = 0.0f;
+	for(std::size_t i = 0; i < m * n; i++){
+		error += h_c.get()[i] * h_c.get()[i];
+	}
+
+	std::cout<<"Error    : "<<std::sqrt(error/c_norm)<<std::endl;
 }
