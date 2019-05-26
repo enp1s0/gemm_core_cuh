@@ -299,11 +299,11 @@ int main(int argc, char** argv){
 #pragma omp parallel for
 		for(std::size_t i = 0; i < max_m * max_n; i++) h_c.get()[i] = cutf::type::cast<test_t>(0.0f);
 
-		for(std::size_t m = (1 << 8); m < max_m; m<<=1){
+		for(std::size_t m = (1 << 8); m <= max_m; m<<=1){
 			for(int i = -1; i <= 1; i++){
 				for(std::size_t n = (1 << 8); n < max_n; n<<=1){
 					for(int j = -1; j <= 1; j++){
-						for(std::size_t k = (1 << 8); k < max_k; k<<=1){
+						for(std::size_t k = (1 << 8); k <= max_k; k<<=1){
 							for(int l = -1; l <= 1; l++){
 								auto d_a = cutf::memory::get_device_unique_ptr<test_t>((m + i) * (k + l));
 								auto d_b = cutf::memory::get_device_unique_ptr<test_t>((k + l) * (n + j));
