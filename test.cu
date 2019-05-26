@@ -12,7 +12,7 @@ constexpr std::size_t n = (1 << 15) - 1;
 constexpr std::size_t k = (1 << 11) - 1;
 
 constexpr std::size_t warp_size = 32;
-constexpr std::size_t block_size = 256;
+constexpr std::size_t block_size = 512;
 
 template <class T>
 __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
