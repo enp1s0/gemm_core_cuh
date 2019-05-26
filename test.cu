@@ -9,9 +9,9 @@
 #include <cutf/type.hpp>
 #include "gemm_core.cuh"
 
-constexpr std::size_t m = (1 << 15) - 1;
-constexpr std::size_t n = (1 << 15) - 1;
-constexpr std::size_t k = (1 << 11) - 1;
+constexpr std::size_t max_m = 1 << 14;
+constexpr std::size_t max_n = 1 << 14;
+constexpr std::size_t max_k = 1 << 14;
 
 constexpr std::size_t warp_size = 32;
 constexpr std::size_t block_size = 512;
