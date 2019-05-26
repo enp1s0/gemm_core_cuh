@@ -216,7 +216,7 @@ float get_norm(const T* const ptr, std::size_t size){
 
 
 template <class T, unsigned num_warps>
-void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::size_t m, const std::size_t n, const std::size_t k){
+void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::size_t m, const std::size_t n, const std::size_t k, unsigned int print_mode = 0){
 	constexpr std::size_t dim = 64;
 	constexpr std::size_t C = 1;
 	const auto num_m_blocks = (m + dim - 1) / dim;
@@ -231,51 +231,92 @@ void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::
 			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
 			});
 
-	print_gemm_info<T>(m, n, k, grid_size, block_size, elapsed_time / C);
+	if(print_mode == 0)
+		print_gemm_info<T>(m, n, k, grid_size, block_size, elapsed_time / C);
+	else
+		std::printf("%lu, %lu, %lu, %.5f, %.5f\n", m, n, k, elapsed_time / C, 2 * (m * n + n * k + k * m) / (elapsed_time / C) / (1024.0 * 1024.0 * 1024.0));
 }
 
-int main(){
+int main(int argc, char** argv){
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-	auto d_a = cutf::memory::get_device_unique_ptr<test_t>(m * k);
-	auto d_b = cutf::memory::get_device_unique_ptr<test_t>(k * n);
-	auto d_c = cutf::memory::get_device_unique_ptr<test_t>(m * n);
-	auto h_a = cutf::memory::get_host_unique_ptr<test_t>(m * k);
-	auto h_b = cutf::memory::get_host_unique_ptr<test_t>(k * n);
-	auto h_c = cutf::memory::get_host_unique_ptr<test_t>(m * n);
+
+	if(argc == 4){
+		const auto m = std::stoul(argv[1]);
+		const auto n = std::stoul(argv[2]);
+		const auto k = std::stoul(argv[3]);
+		auto d_a = cutf::memory::get_device_unique_ptr<test_t>(m * k);
+		auto d_b = cutf::memory::get_device_unique_ptr<test_t>(k * n);
+		auto d_c = cutf::memory::get_device_unique_ptr<test_t>(m * n);
+		auto h_a = cutf::memory::get_host_unique_ptr<test_t>(m * k);
+		auto h_b = cutf::memory::get_host_unique_ptr<test_t>(k * n);
+		auto h_c = cutf::memory::get_host_unique_ptr<test_t>(m * n);
 
 #pragma omp parallel for
-	for(std::size_t i = 0; i < m * k; i++) h_a.get()[i] = cutf::type::cast<test_t>(dist(mt));
+		for(std::size_t i = 0; i < m * k; i++) h_a.get()[i] = cutf::type::cast<test_t>(dist(mt));
 #pragma omp parallel for
-	for(std::size_t i = 0; i < k * n; i++) h_b.get()[i] = cutf::type::cast<test_t>(dist(mt));
+		for(std::size_t i = 0; i < k * n; i++) h_b.get()[i] = cutf::type::cast<test_t>(dist(mt));
 #pragma omp parallel for
-	for(std::size_t i = 0; i < m * n; i++) h_c.get()[i] = cutf::type::cast<test_t>(0.0f);
+		for(std::size_t i = 0; i < m * n; i++) h_c.get()[i] = cutf::type::cast<test_t>(0.0f);
 
-	cutf::memory::copy(d_a.get(), h_a.get(), m * k);
-	cutf::memory::copy(d_b.get(), h_b.get(), k * n);
-	cutf::memory::copy(d_c.get(), h_c.get(), m * n);
+		cutf::memory::copy(d_a.get(), h_a.get(), m * k);
+		cutf::memory::copy(d_b.get(), h_b.get(), k * n);
+		cutf::memory::copy(d_c.get(), h_c.get(), m * n);
 
-	test_gemm_16x16<test_t, 1>(d_c.get(), d_a.get(), d_b.get(), m, n, k);
+		test_gemm_16x16<test_t, 1>(d_c.get(), d_a.get(), d_b.get(), m, n, k);
 
-	cutf::memory::copy(h_c.get(), d_c.get(), m * n);
-	const auto c_norm = get_norm(h_c.get(), m * n);
+		cutf::memory::copy(h_c.get(), d_c.get(), m * n);
+		const auto c_norm = get_norm(h_c.get(), m * n);
 
-	// Validation
-	auto cublas = cutf::cublas::get_cublas_unique_ptr();
-	test_t alpha = cutf::type::cast<test_t>(1.0f), beta = cutf::type::cast<test_t>(-1.0f);
-	CUTF_HANDLE_ERROR(
-			cutf::cublas::gemm(*cublas.get(),
-				CUBLAS_OP_N, CUBLAS_OP_N,
-				m, n, k,
-				&alpha,
-				d_a.get(), m,
-				d_b.get(), k,
-				&beta,
-				d_c.get(), m
-			));
-	cutf::memory::copy(h_c.get(), d_c.get(), m * n);
+		// Validation
+		auto cublas = cutf::cublas::get_cublas_unique_ptr();
+		test_t alpha = cutf::type::cast<test_t>(1.0f), beta = cutf::type::cast<test_t>(-1.0f);
+		CUTF_HANDLE_ERROR(
+				cutf::cublas::gemm(*cublas.get(),
+					CUBLAS_OP_N, CUBLAS_OP_N,
+					m, n, k,
+					&alpha,
+					d_a.get(), m,
+					d_b.get(), k,
+					&beta,
+					d_c.get(), m
+					));
+		cutf::memory::copy(h_c.get(), d_c.get(), m * n);
 
-	const auto error = get_norm(h_c.get(), m * n);
+		const auto error = get_norm(h_c.get(), m * n);
 
-	std::cout<<"Error    : "<<(error/c_norm)<<std::endl;
+		std::cout<<"Error    : "<<(error/c_norm)<<std::endl;
+	} else {
+		std::cout<<"m,n,k,time,tflops,("<<get_type_name<test_t>()<<")"<<std::endl;
+		auto h_a = cutf::memory::get_host_unique_ptr<test_t>((max_m + 1) * (max_k + 1));
+		auto h_b = cutf::memory::get_host_unique_ptr<test_t>((max_k + 1) * (max_n + 1));
+		auto h_c = cutf::memory::get_host_unique_ptr<test_t>((max_m + 1) * (max_n + 1));
+
+#pragma omp parallel for
+		for(std::size_t i = 0; i < max_m * max_k; i++) h_a.get()[i] = cutf::type::cast<test_t>(dist(mt));
+#pragma omp parallel for
+		for(std::size_t i = 0; i < max_k * max_n; i++) h_b.get()[i] = cutf::type::cast<test_t>(dist(mt));
+#pragma omp parallel for
+		for(std::size_t i = 0; i < max_m * max_n; i++) h_c.get()[i] = cutf::type::cast<test_t>(0.0f);
+
+		for(std::size_t m = (1 << 8); m < max_m; m<<=1){
+			for(int i = -1; i <= 1; i++){
+				for(std::size_t n = (1 << 8); n < max_n; n<<=1){
+					for(int j = -1; j <= 1; j++){
+						for(std::size_t k = (1 << 8); k < max_k; k<<=1){
+							for(int l = -1; l <= 1; l++){
+								auto d_a = cutf::memory::get_device_unique_ptr<test_t>((m + i) * (k + l));
+								auto d_b = cutf::memory::get_device_unique_ptr<test_t>((k + l) * (n + j));
+								auto d_c = cutf::memory::get_device_unique_ptr<test_t>((m + i) * (n + j));
+								cutf::memory::copy(d_a.get(), h_a.get(), (m + i) * (k + l));
+								cutf::memory::copy(d_b.get(), h_b.get(), (k + l) * (n + j));
+								cutf::memory::copy(d_c.get(), h_c.get(), (m + i) * (n + j));
+								test_gemm_16x16<test_t, 1>(d_c.get(), d_a.get(), d_b.get(), m + i, n + j, k + l, 1);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
