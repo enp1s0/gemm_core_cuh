@@ -47,25 +47,17 @@ __device__ void load64x64(
 		const T* const src, const std::size_t m, const std::size_t n,
 		const std::size_t start_m, const std::size_t start_n,
 		const unsigned unique_id, const unsigned warp_id
-		){}
-
-template <>
-__device__ void load64x64<float, 8>(
-		float* const dst,
-		const float* const src, const std::size_t m, const std::size_t n,
-		const std::size_t start_m, const std::size_t start_n,
-		const unsigned unique_id, const unsigned warp_id
 		){
 	constexpr std::size_t dim = 64;
 	if(start_m + dim >= m || start_n + dim >= n){
-		for(unsigned i = warp_id; i < dim; i+=8){
+		for(unsigned i = warp_id; i < dim; i+=num_warps){
 			const auto load_n = start_n + i;
 
 			for(unsigned j = 0; j < dim; j += warp_size){
 				const auto load_m = start_m + j + unique_id;
-				float tmp = 0.0f;
+				T tmp = cutf::type::cast<T>(0.0f);
 				if(load_m < m && load_n < n){
-					tmp = src[load_m + load_n * m];
+					tmp = __ldg( &src[load_m + load_n * m] );
 				}
 
 				dst[j + unique_id + i * dim] = tmp;
@@ -73,14 +65,14 @@ __device__ void load64x64<float, 8>(
 		}
 	}else{
 #pragma unroll
-		for(unsigned i = warp_id; i < dim; i+=8){
+		for(unsigned i = warp_id; i < dim; i+=num_warps){
 			const auto load_n = start_n + i;
 
 #pragma unroll
 			for(unsigned j = 0; j < dim; j += warp_size){
 				const auto load_m = start_m + j + unique_id;
 				
-				dst[j + unique_id + i * dim] = src[load_m + load_n * m];
+				dst[j + unique_id + i * dim] = __ldg( &src[load_m + load_n * m]);
 			}
 		}
 	}
@@ -92,18 +84,10 @@ __device__ void store64x64(
 		const std::size_t start_m, const std::size_t start_n,
 		const T* const src, 
 		const unsigned unique_id, const unsigned warp_id
-		){}
-
-template <>
-__device__ void store64x64<float, 8>(
-		float* const dst, const std::size_t m, const std::size_t n,
-		const std::size_t start_m, const std::size_t start_n,
-		const float* const src, 
-		const unsigned unique_id, const unsigned warp_id
 		){
 	constexpr std::size_t dim = 64;
 	if(start_m + dim >= m || start_n + dim >= n){
-		for(unsigned i = warp_id; i < dim; i+=8){
+		for(unsigned i = warp_id; i < dim; i+=num_warps){
 			const auto load_n = start_n + i;
 
 			for(unsigned j = 0; j < dim; j += warp_size){
@@ -116,7 +100,7 @@ __device__ void store64x64<float, 8>(
 		}
 	}else{
 #pragma unroll
-		for(unsigned i = warp_id; i < dim; i+=8){
+		for(unsigned i = warp_id; i < dim; i+=num_warps){
 			const auto load_n = start_n + i;
 
 #pragma unroll
