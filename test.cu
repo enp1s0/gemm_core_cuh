@@ -46,19 +46,19 @@ __device__ void load64x64(
 		T* const dst,
 		const T* const src, const std::size_t m, const std::size_t n,
 		const std::size_t start_m, const std::size_t start_n,
-		const unsigned unique_id
+		const unsigned unique_id, const unsigned warp_id
 		){}
 
 template <>
-__device__ void load64x64<float, 1>(
+__device__ void load64x64<float, 8>(
 		float* const dst,
 		const float* const src, const std::size_t m, const std::size_t n,
 		const std::size_t start_m, const std::size_t start_n,
-		const unsigned unique_id
+		const unsigned unique_id, const unsigned warp_id
 		){
 	constexpr std::size_t dim = 64;
 	if(start_m + dim >= m || start_n + dim >= n){
-		for(unsigned i = 0; i < dim; i++){
+		for(unsigned i = warp_id; i < dim; i+=8){
 			const auto load_n = start_n + i;
 
 			for(unsigned j = 0; j < dim; j += warp_size){
@@ -72,9 +72,11 @@ __device__ void load64x64<float, 1>(
 			}
 		}
 	}else{
-		for(unsigned i = 0; i < dim; i++){
+#pragma unroll
+		for(unsigned i = warp_id; i < dim; i+=8){
 			const auto load_n = start_n + i;
 
+#pragma unroll
 			for(unsigned j = 0; j < dim; j += warp_size){
 				const auto load_m = start_m + j + unique_id;
 				
@@ -89,36 +91,38 @@ __device__ void store64x64(
 		T* const dst,const std::size_t m, const std::size_t n,
 		const std::size_t start_m, const std::size_t start_n,
 		const T* const src, 
-		const unsigned unique_id
+		const unsigned unique_id, const unsigned warp_id
 		){}
 
 template <>
-__device__ void store64x64<float, 1>(
+__device__ void store64x64<float, 8>(
 		float* const dst, const std::size_t m, const std::size_t n,
 		const std::size_t start_m, const std::size_t start_n,
 		const float* const src, 
-		const unsigned unique_id
+		const unsigned unique_id, const unsigned warp_id
 		){
 	constexpr std::size_t dim = 64;
 	if(start_m + dim >= m || start_n + dim >= n){
-		for(unsigned i = 0; i < dim; i++){
+		for(unsigned i = warp_id; i < dim; i+=8){
 			const auto load_n = start_n + i;
-			if(load_n >= n) return;
 
 			for(unsigned j = 0; j < dim; j += warp_size){
 				const auto load_m = start_m + j + unique_id;
-				if(load_m >= m) break;
+				if(load_m < m && load_n < n){
+					dst[load_m + load_n * m] = src[j + unique_id + i * dim];
+				}
 
-				dst[load_m + load_n * m] = src[j + unique_id + i * dim];
 			}
 		}
 	}else{
-		for(unsigned i = 0; i < dim; i++){
+#pragma unroll
+		for(unsigned i = warp_id; i < dim; i+=8){
 			const auto load_n = start_n + i;
 
+#pragma unroll
 			for(unsigned j = 0; j < dim; j += warp_size){
 				const auto load_m = start_m + j + unique_id;
-
+				
 				dst[load_m + load_n * m] = src[j + unique_id + i * dim];
 			}
 		}
@@ -135,6 +139,7 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 	const auto num_k_blocks = (k + dim - 1) / dim;
 	const auto matrix_id = blockIdx.x;
 	const unsigned unique_id = threadIdx.x & (warp_size - 1); 
+	const unsigned warp_id = threadIdx.x >> 5;
 
 	const std::size_t block_m = matrix_id % num_m_blocks;
 	const std::size_t block_n = matrix_id / num_m_blocks;
@@ -149,20 +154,20 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 		const auto block_m_start = block_m * dim;
 		const auto block_n_start = block_n * dim;
 		const auto block_k_start = ik * dim;
-		load64x64<float, 1>(shared_c,
+		load64x64<float, 8>(shared_c,
 				c, m, n,
 				block_m_start, block_n_start,
-				unique_id);
+				unique_id, warp_id);
 		// Load A
-		load64x64<float, 1>(shared_a,
+		load64x64<float, 8>(shared_a,
 				a, m, k,
 				block_m_start, block_k_start,
-				unique_id);
+				unique_id, warp_id);
 		// Load B
-		load64x64<float, 1>(shared_b,
+		load64x64<float, 8>(shared_b,
 				b, k, n,
 				block_k_start, block_n_start,
-				unique_id);
+				unique_id, warp_id);
 
 		__syncthreads();
 		constexpr std::size_t num_blocks_per_grid = block_size / warp_size;
@@ -181,11 +186,11 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 		__syncthreads();
 
 		// Store C
-		store64x64<float, 1>(
+		store64x64<float, 8>(
 				c, m, n,
 				block_m * dim, block_n * dim,
 				shared_c,
-				unique_id
+				unique_id, warp_id
 				);
 	}
 }
