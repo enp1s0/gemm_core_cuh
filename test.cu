@@ -204,7 +204,7 @@ void test_gemm_16x16<float, 1>(float* const c, const float* const a, const float
 	const auto elapsed_time = get_elapsed_time(
 			[&a, &b, &c, &m, &n, &k, &grid_size](){
 			for(std::size_t i = 0;i < C; i++)
-			test_gemm_16x16_kernel<float, 1><<<grid_size, block_size>>>(c, a, b, m, n, k);
+			test_gemm_16x16_kernel<float><<<grid_size, block_size>>>(c, a, b, m, n, k);
 			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
 			});
 
