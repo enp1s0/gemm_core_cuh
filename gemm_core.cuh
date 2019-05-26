@@ -8,9 +8,9 @@ __device__ void gemm_core16x16(T* const c, const T* const a, const T* const b, c
 template<>
 __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
 	const auto lane = unique_id >> 4;
+	const auto y = unique_id & 0xf;
 	for(auto i = 0; i < 16; i+= 2){
 		const auto x = i + lane;
-		const auto y = unique_id & 0xf;
 
 		float sum = 0.0f;
 		for(unsigned k = 0; k < 16; k += 4){
