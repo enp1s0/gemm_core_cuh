@@ -19,6 +19,11 @@ constexpr std::size_t block_size = 512;
 using test_t = half;
 
 template <class T>
+std::string get_type_name();
+template <> std::string get_type_name<float>(){return "float";}
+template <> std::string get_type_name<half>(){return "half";}
+
+template <class T>
 __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
 	if(name != nullptr) printf("%s = \n", name);
 	for(int i = 0; i < m; i++){
@@ -37,6 +42,7 @@ __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, 
 
 template <class T>
 void print_gemm_info(const std::size_t m, const std::size_t n, const std::size_t k, const std::size_t grid_size, std::size_t block_size, double elapsed_time){
+	std::cout<<"Type        : "<<get_type_name<T>()<<std::endl;
 	std::cout<<"Matrix size : "<<m<<", "<<n<<", "<<k<<std::endl;
 	std::cout<<"Memory      : "<<((m * n + n * k + k * m) * sizeof(T) / (1024.0 * 1024.0))<<" MB"<<std::endl;
 	std::cout<<"Grid size   : "<<grid_size<<std::endl;
