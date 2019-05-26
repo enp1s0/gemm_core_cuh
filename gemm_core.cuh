@@ -23,4 +23,22 @@ __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a,
 		c[x * ldm + y] += sum;
 	}
 }
+
+template<>
+__device__ void gemm_core16x16<half, 1lu>(half* const c, const half* const a, const half* const b, const unsigned ldm, const unsigned unique_id){
+	const auto lane = unique_id >> 4;
+	const auto y = unique_id & 0xf;
+	for(auto i = 0; i < 16; i+= 2){
+		const auto x = i + lane;
+		const half2 *b2_ptr = reinterpret_cast<const half2*>(b + x * ldm);
+
+		half2 sum = __float2half2_rn(0.0f);
+		for(unsigned k = 0; k < 16; k += 2){
+			const auto b2 = b2_ptr[(k >> 1)];
+			const auto a2 = __halves2half2(a[k * ldm + y], a[(k+1) * ldm + y]);
+			sum = __hfma2(a2, b2, sum);
+		}
+		c[x * ldm + y] += __high2half(sum) + __low2half(sum);
+	}
+}
 #endif /* end of include guard */
