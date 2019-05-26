@@ -113,11 +113,11 @@ __device__ void store64x64(
 	}
 }
 
-template <class T, unsigned num_warps>
+template <class T>
 __global__ void test_gemm_16x16_kernel(T* const c, const T* const a, const T* const b, const std::size_t m, const std::size_t n, const std::size_t k){}
 
 template <>
-__global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* const a, const float* const b, const std::size_t m, const std::size_t n, const std::size_t k){
+__global__ void test_gemm_16x16_kernel<float>(float* const c, const float* const a, const float* const b, const std::size_t m, const std::size_t n, const std::size_t k){
 	constexpr std::size_t dim = 64;
 	const auto num_m_blocks = (m + dim - 1) / dim;
 	const auto num_k_blocks = (k + dim - 1) / dim;
@@ -138,28 +138,28 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 		const auto block_m_start = block_m * dim;
 		const auto block_n_start = block_n * dim;
 		const auto block_k_start = ik * dim;
-		load64x64<float, 8>(shared_c,
+		load64x64<float, (block_size/warp_size)>(shared_c,
 				c, m, n,
 				block_m_start, block_n_start,
 				unique_id, warp_id);
 		// Load A
-		load64x64<float, 8>(shared_a,
+		load64x64<float, (block_size/warp_size)>(shared_a,
 				a, m, k,
 				block_m_start, block_k_start,
 				unique_id, warp_id);
 		// Load B
-		load64x64<float, 8>(shared_b,
+		load64x64<float, (block_size/warp_size)>(shared_b,
 				b, k, n,
 				block_k_start, block_n_start,
 				unique_id, warp_id);
 
 		__syncthreads();
 
-		constexpr std::size_t num_blocks_per_grid = block_size / warp_size;
+		constexpr unsigned num_blocks_per_grid = block_size / warp_size;
 		for(unsigned i = 0; i < 16 / num_blocks_per_grid; i++){
-			const auto sub_block_m = 2 * i + (warp_id >> 2);
-			const auto sub_block_n = warp_id & 0x3;
-			for(unsigned j = 0; j < (64/16); j++){
+			const auto sub_block_m = 2 * i + (warp_id / 4);
+			const auto sub_block_n = warp_id & (dim/16 - 1);
+			for(unsigned j = 0; j < (dim/16); j++){
 				gemm_core16x16<float, 1>(
 						shared_c + sub_block_n * dim * 16 + sub_block_m * 16,
 						shared_a + sub_block_m * 16 + j * (dim * 16),
@@ -171,7 +171,7 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 		__syncthreads();
 
 		// Store C
-		store64x64<float, 8>(
+		store64x64<float, (block_size/warp_size)>(
 				c, m, n,
 				block_m * dim, block_n * dim,
 				shared_c,
