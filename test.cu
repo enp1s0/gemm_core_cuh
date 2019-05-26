@@ -234,7 +234,7 @@ void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::
 	if(print_mode == 0)
 		print_gemm_info<T>(m, n, k, grid_size, block_size, elapsed_time / C);
 	else
-		std::printf("%lu, %lu, %lu, %.5f, %.5f\n", m, n, k, elapsed_time / C, 2 * (m * n + n * k + k * m) / (elapsed_time / C) / (1024.0 * 1024.0 * 1024.0));
+		std::printf("%lu, %lu, %lu, %.5f, %.5f\n", m, n, k, elapsed_time / C, 2 * (m * n + n * k + k * m) / (elapsed_time / C) / (1024.0 * 1024.0 * 1024.0 * 1024.0));
 }
 
 int main(int argc, char** argv){
