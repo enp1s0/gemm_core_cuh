@@ -1,6 +1,8 @@
 #include <iostream>
 #include <random>
+#include <memory>
 #include <chrono>
+#include <omp.h>
 #include <cutf/cublas.hpp>
 #include <cutf/memory.hpp>
 #include <cutf/error.hpp>
