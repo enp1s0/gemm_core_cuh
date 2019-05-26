@@ -170,10 +170,11 @@ __global__ void test_gemm_16x16_kernel<float, 1>(float* const c, const float* co
 				unique_id, warp_id);
 
 		__syncthreads();
+
 		constexpr std::size_t num_blocks_per_grid = block_size / warp_size;
 		for(unsigned i = 0; i < 16 / num_blocks_per_grid; i++){
-			const auto sub_block_m = 2 * i + (threadIdx.x >> 5) / 4;
-			const auto sub_block_n = (threadIdx.x >> 5) & 0x3;
+			const auto sub_block_m = 2 * i + (warp_id >> 2);
+			const auto sub_block_n = warp_id & 0x3;
 			for(unsigned j = 0; j < (64/16); j++){
 				gemm_core16x16<float, 1>(
 						shared_c + sub_block_n * dim * 16 + sub_block_m * 16,
