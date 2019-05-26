@@ -188,6 +188,24 @@ double get_elapsed_time(Func func){
 	return std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000000.0;
 }
 
+template <class T>
+float get_norm(const T* const ptr, std::size_t size){
+	const auto num_threads = 100;
+	std::unique_ptr<T[]> sums(new T [num_threads]);
+	for(std::size_t i = 0; i < num_threads; i++){
+		sums.get()[i] = static_cast<T>(0.0f);
+	}
+#pragma omp parallel for
+	for(std::size_t i = 0; i < size; i++){
+		sums.get()[omp_get_thread_num()] += ptr[i] * ptr[i];
+	}
+	T sum = 0.0f;
+	for(std::size_t i = 0; i < num_threads; i++){
+		sum += sums.get()[i];
+	}
+	return std::sqrt(sum);
+}
+
 
 template <class T, unsigned num_warps>
 void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::size_t m, const std::size_t n, const std::size_t k){}
@@ -235,10 +253,7 @@ int main(){
 	test_gemm_16x16<float, 1>(d_c.get(), d_a.get(), d_b.get(), m, n, k);
 
 	cutf::memory::copy(h_c.get(), d_c.get(), m * n);
-	float c_norm = 0.0f;
-	for(std::size_t i = 0; i < m * n; i++){
-		c_norm += h_c.get()[i] * h_c.get()[i];
-	}
+	float c_norm = get_norm(h_c.get(), m * n);
 
 	// Validation
 	auto cublas = cutf::cublas::get_cublas_unique_ptr();
@@ -255,10 +270,7 @@ int main(){
 			));
 	cutf::memory::copy(h_c.get(), d_c.get(), m * n);
 
-	float error = 0.0f;
-	for(std::size_t i = 0; i < m * n; i++){
-		error += h_c.get()[i] * h_c.get()[i];
-	}
+	float error = get_norm(h_c.get(), m * n);
 
-	std::cout<<"Error    : "<<std::sqrt(error/c_norm)<<std::endl;
+	std::cout<<"Error    : "<<(error/c_norm)<<std::endl;
 }
