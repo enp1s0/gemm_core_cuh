@@ -3,7 +3,7 @@
 #include <cuda_fp16.h>
 
 template<class T, std::size_t num_warps> 
-__device__ void gemm_core16x16(T* const c, const T* const a, const T* const b, const unsigned ldm, const unsigned unique_id) {}
+__device__ void gemm_core16x16(T* const c, const T* const a, const T* const b, const unsigned ldm, const unsigned unique_id);
 
 template<>
 __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
