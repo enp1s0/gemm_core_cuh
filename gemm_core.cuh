@@ -15,10 +15,10 @@ __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a,
 		float sum = c[x * ldm + y];
 		for(unsigned k = 0; k < 16; k += 4){
 			const float4 b4 = *reinterpret_cast<const float4*>(b  + x * ldm + k);
-			sum += a[(k + 0) * ldm + y] * b4.x;
-			sum += a[(k + 1) * ldm + y] * b4.y;
-			sum += a[(k + 2) * ldm + y] * b4.z;
-			sum += a[(k + 3) * ldm + y] * b4.w;
+			sum = fmaf(a[(k + 0) * ldm + y], b4.x, sum);
+			sum = fmaf(a[(k + 1) * ldm + y], b4.y, sum);
+			sum = fmaf(a[(k + 2) * ldm + y], b4.z, sum);
+			sum = fmaf(a[(k + 3) * ldm + y], b4.w, sum);
 		}
 		c[x * ldm + y] = sum;
 	}
