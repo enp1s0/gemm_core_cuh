@@ -12,7 +12,7 @@ __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a,
 	for(auto i = 0; i < 16; i+= 2){
 		const auto x = i + lane;
 
-		float sum = 0.0f;
+		float sum = c[x * ldm + y];
 		for(unsigned k = 0; k < 16; k += 4){
 			const float4 b4 = *reinterpret_cast<const float4*>(b  + x * ldm + k);
 			sum += a[(k + 0) * ldm + y] * b4.x;
@@ -20,7 +20,7 @@ __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a,
 			sum += a[(k + 2) * ldm + y] * b4.z;
 			sum += a[(k + 3) * ldm + y] * b4.w;
 		}
-		c[x * ldm + y] += sum;
+		c[x * ldm + y] = sum;
 	}
 }
 
