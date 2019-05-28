@@ -9,17 +9,26 @@ template<>
 __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
 	const auto lane = unique_id >> 4;
 	const auto y = unique_id & 0xf;
+	// unrollするとレジスタを1つ多く確保する
+	// 実行すると遅い
+//#pragma unroll
 	for(auto i = 0; i < 16; i+= 2){
 		const auto x = i + lane;
 
+		// はじめにcを読んでおくと誤差が小さくなる
+		// cuBLASの内部と計算順序が合うのかも
 		float sum = c[x * ldm + y];
-		for(unsigned k = 0; k < 16; k += 4){
-			const float4 b4 = *reinterpret_cast<const float4*>(b  + x * ldm + k);
+		for(unsigned k = 0; k < 16; k+=1){
+			sum = fmaf(a[y + ldm * k], b[x * ldm + k], sum);
+		}
+		// float4による128bitアクセスはSharedメモリに対しては意味がないみたい
+		/*for(unsigned k = 0; k < 16; k += 4){
+			const float4 b4 = *reinterpret_cast<const float4*>(b + x * ldm + k);
 			sum = fmaf(a[(k + 0) * ldm + y], b4.x, sum);
 			sum = fmaf(a[(k + 1) * ldm + y], b4.y, sum);
 			sum = fmaf(a[(k + 2) * ldm + y], b4.z, sum);
 			sum = fmaf(a[(k + 3) * ldm + y], b4.w, sum);
-		}
+		}*/
 		c[x * ldm + y] = sum;
 	}
 }
