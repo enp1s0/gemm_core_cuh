@@ -14,7 +14,7 @@ constexpr std::size_t max_n = 1 << 14;
 constexpr std::size_t max_k = 1 << 14;
 
 constexpr std::size_t warp_size = 32;
-constexpr std::size_t block_size = 512;
+constexpr std::size_t block_size = 256;
 
 using test_t = half;
 
@@ -218,7 +218,7 @@ float get_norm(const T* const ptr, std::size_t size){
 template <class T, unsigned num_warps>
 void test_gemm_16x16(T* const c, const T* const a, const T* const b, const std::size_t m, const std::size_t n, const std::size_t k, unsigned int print_mode = 0){
 	constexpr std::size_t dim = 64;
-	constexpr std::size_t C = 8;
+	constexpr std::size_t C = 1;
 	const auto num_m_blocks = (m + dim - 1) / dim;
 	const auto num_n_blocks = (n + dim - 1) / dim;
 
