@@ -2,6 +2,7 @@
 #define __GEMM_CORE_CUH__
 #include <cuda_fp16.h>
 
+namespace mtk {
 template<class T, std::size_t num_warps> 
 __device__ void gemm_core16x16(T* const c, const T* const a, const T* const b, const unsigned ldm, const unsigned unique_id);
 
@@ -59,4 +60,6 @@ __device__ void gemm_core16x16<half, 1lu>(half* const c, const half* const a, co
 		c[(x + i) * ldm + y] = __low2half(sum) + __high2half(sum) + (c[(x + i) * ldm + y]);
 	}
 }
+} // namespace mtk
+
 #endif /* end of include guard */
