@@ -168,10 +168,10 @@ __global__ void test_gemm_16x16_kernel(T* const c, const T* const a, const T* co
 			const auto sub_block_n = warp_id & (dim/16 - 1);
 			for(unsigned j = 0; j < (dim/16); j++){
 				mtk::gemm_core16x16<T, 1>(
-						shared_c + sub_block_n * dim * 16 + sub_block_m * 16,
-						shared_a + sub_block_m * 16 + j * (dim * 16),
-						shared_b + j * 16 + sub_block_n * (dim * 16),
-						dim, unique_id);
+						shared_c + sub_block_n * dim * 16 + sub_block_m * 16, dim,
+						shared_a + sub_block_m * 16 + j * (dim * 16), dim,
+						shared_b + j * 16 + sub_block_n * (dim * 16), dim,
+						unique_id);
 			}
 		}
 
