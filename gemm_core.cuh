@@ -4,10 +4,10 @@
 
 namespace mtk {
 template<class T, std::size_t num_warps> 
-__device__ void gemm_core16x16(T* const c, const T* const a, const T* const b, const unsigned ldm, const unsigned unique_id);
+__device__ inline void gemm_core16x16(T* const c, const T* const a, const T* const b, const unsigned ldm, const unsigned unique_id);
 
 template<>
-__device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
+__device__ inline void gemm_core16x16<float, 1lu>(float* const c, const float* const a, const float* const b, const unsigned ldm, const unsigned unique_id){
 	const auto lane = unique_id >> 4;
 	const auto y = unique_id & 0xf;
 	// unrollするとレジスタを1つ多く確保する
@@ -35,7 +35,7 @@ __device__ void gemm_core16x16<float, 1lu>(float* const c, const float* const a,
 }
 
 template<>
-__device__ void gemm_core16x16<half, 1lu>(half* const c, const half* const a, const half* const b, const unsigned ldm, const unsigned unique_id){
+__device__ inline void gemm_core16x16<half, 1lu>(half* const c, const half* const a, const half* const b, const unsigned ldm, const unsigned unique_id){
 	const auto y = unique_id & 0xf;
 	const auto x = (unique_id >> 4) << 3;
 	unsigned i, k;
