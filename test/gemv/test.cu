@@ -64,4 +64,5 @@ void test_gemv(){
 
 int main() {
 	test_gemv<float>();
+	test_gemv<half >();
 }
