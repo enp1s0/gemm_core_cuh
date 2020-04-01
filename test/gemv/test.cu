@@ -53,7 +53,7 @@ void test_gemv(){
 		for(unsigned j = 0; j < N; j++){
 			sum += convert<float>(a[j * N + i]) * convert<float>(b[j]);
 		}
-		error += (c[i] - sum) * (c[i] - sum);
+		error += (convert<float>(c[i]) - sum) * (convert<float>(c[i]) - sum);
 	}
 	std::printf("error = %e\n", std::sqrt(error));
 
