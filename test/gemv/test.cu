@@ -4,6 +4,11 @@
 
 constexpr unsigned N = 16;
 
+template <class T>
+std::string get_type_name();
+template <> std::string get_type_name<float>(){return "float";}
+template <> std::string get_type_name<half>(){return "half";}
+
 template <class T, class S>
 __device__ __host__ T convert(const S);
 template <> __device__ __host__ float convert<float, float>(const float a) {return a;}
@@ -21,6 +26,8 @@ void test_gemv(){
 	T* a;
 	T* b;
 	T* c;
+
+	std::printf("%s\n", get_type_name<T>().c_str());
 
 	cudaMallocHost(&a, N * N * sizeof(T));
 	cudaMallocHost(&b, N * sizeof(T));
