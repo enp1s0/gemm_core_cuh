@@ -60,6 +60,51 @@ __device__ inline void gemm_core16x16<half, 1lu>(half* const c, const unsigned l
 		c[(x + i) * ldm_c + y] = __low2half(sum) + __high2half(sum) + (c[(x + i) * ldm_c + y]);
 	}
 }
+
+template<class T, std::size_t num_warps>
+__device__ inline void gemv_core16x16(T* const c, const T* const a, const unsigned ldm_a, const T* const b, const unsigned unique_id);
+
+template<>
+__device__ inline void gemv_core16x16<float, 1lu>(float* const c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned unique_id){
+	const unsigned lane = unique_id >> 4;
+	const unsigned m = unique_id & 0xf;
+	const unsigned n = lane * 8;
+
+	float sum = 0;
+	for(unsigned i = 0; i < 8; i++){
+		sum += a[m + (n + i) * ldm_a] * b[n + i];
+	}
+
+	sum += __shfl_xor_sync(0xffffffff, sum, 16);
+
+	if(lane == 0){
+		c[m] += sum;
+	}
+}
+
+template<>
+__device__ inline void gemv_core16x16<half, 1lu>(half* const c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned unique_id){
+	const unsigned lane = unique_id >> 4;
+	const unsigned m = unique_id & 0xf;
+	const unsigned n = lane * 8;
+
+	half2 sum = __float2half2_rn(0.0f);
+	for(unsigned i = 0; i < 8 / 2; i++){
+		half2 a2;
+		a2.x = a[m + (n + 2 * i + 0) * ldm_a];
+		a2.y = a[m + (n + 2 * i + 1) * ldm_a];
+		const half2 b2 = *reinterpret_cast<const half2*>(b + n + i * 2);
+		sum = __hfma2(a2, b2, sum);
+	}
+
+	half s = sum.x + sum.y;
+
+	s += __shfl_xor_sync(0xffffffff, s, 16);
+
+	if(lane == 0){
+		c[m] += s;
+	}
+}
 } // namespace mtk
 
 #endif /* end of include guard */
