@@ -162,7 +162,7 @@ __device__ inline void ger_core16x16<float, 1lu>(float* const c, const unsigned 
 	for(unsigned i = 0; i < 8; i++){
 		const auto b1 = b[n + i];
 		const auto c1 = a1 * b1;
-		c[ldm_c * (n + i) + m] = c1;
+		c[ldm_c * (n + i) + m] += c1;
 	}
 }
 
