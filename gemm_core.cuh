@@ -148,6 +148,39 @@ __device__ inline void gevm_core16x16<half, 1lu>(half* const c, const half* cons
 		c[n] += s;
 	}
 }
+
+template<class T, std::size_t num_warps>
+__device__ inline void ger_core16x16(T* const c, const unsigned ldm_c, const T* const a, const T* const b, const unsigned unique_id);
+
+template<>
+__device__ inline void ger_core16x16<float, 1lu>(float* const c, const unsigned ldm_c, const float* const a, const float* const b, const unsigned unique_id){
+	const unsigned lane = unique_id >> 4;
+	const unsigned m = unique_id & 0xf;
+	const unsigned n = lane * 8;
+
+	const auto a1 = a[m];
+	for(unsigned i = 0; i < 8; i++){
+		const auto b1 = b[n + i];
+		const auto c1 = a1 * b1;
+		c[ldm_c * (n + i) + m] = c1;
+	}
+}
+
+template<>
+__device__ inline void ger_core16x16<half, 1lu>(half* const c, const unsigned ldm_c, const half* const a, const half* const b, const unsigned unique_id){
+	const unsigned lane = unique_id >> 4;
+	const unsigned m = unique_id & 0xf;
+	const unsigned n = lane * 8;
+
+	const auto a2 = __halves2half2(a[m], a[m]);
+
+	for(unsigned i = 0; i < 8 / 2; i++){
+		const auto b2 = *reinterpret_cast<const half2*>(b + n + i * 2);
+		const auto c2 = __hmul2(a2, b2);
+		c[ldm_c * (n + i * 2 + 0) + m] += c2.x;
+		c[ldm_c * (n + i * 2 + 1) + m] += c2.y;
+	}
+}
 } // namespace mtk
 
 #endif /* end of include guard */
