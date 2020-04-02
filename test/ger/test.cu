@@ -42,6 +42,9 @@ void test_gemv(){
 	for(unsigned i = 0; i < N; i++){
 		b[i] = convert<T>(dist(mt));
 	}
+	for(unsigned i = 0; i < N * N; i++){
+		c[i] = convert<T>(1.0f);
+	}
 
 	cudaDeviceSynchronize();
 	test_gemv_16x16_kernel<T><<<1, 32>>>(c, a, b);
@@ -50,7 +53,7 @@ void test_gemv(){
 	float error = 0.0f;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
-			const auto ca = convert<float>(a[i]) * convert<float>(b[j]);
+			const auto ca = convert<float>(a[i]) * convert<float>(b[j]) + 1.0f;
 			error = std::max((convert<float>(c[i + j * N]) - ca) * (convert<float>(c[i + j * N]) - ca), error);
 		}
 	}
