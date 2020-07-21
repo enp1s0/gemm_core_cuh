@@ -18,7 +18,7 @@ template <> __device__ __host__ half  convert<half , half >(const half  a) {retu
 
 template <class T>
 __global__ void test_gemv_16x16_kernel(T* const c, const T* const a, const T* const b){
-	mtk::gemv_core16x16<T, 1>(c, a, N, b, threadIdx.x & 0x1f);
+	mtk::gemv_core16x16(c, a, N, b, threadIdx.x & 0x1f);
 }
 
 template <class T>
