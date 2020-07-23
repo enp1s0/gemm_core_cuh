@@ -3,6 +3,7 @@
 #include <gemm_core.cuh>
 
 constexpr unsigned N = 16;
+constexpr unsigned K = 32;
 
 template <class T>
 std::string get_type_name();
@@ -16,9 +17,9 @@ template <> __device__ __host__ float convert<float, half >(const half  a) {retu
 template <> __device__ __host__ half  convert<half , float>(const float a) {return __float2half(a);}
 template <> __device__ __host__ half  convert<half , half >(const half  a) {return a;}
 
-template <class T>
+template <class T, unsigned K>
 __global__ void test_gemm_16x16_kernel(T* const c, const T* const a, const T* const b){
-	mtk::gemm_core16x16(c, N, a, N, b, N, threadIdx.x & 0x1f);
+	mtk::gemm_core16x16<K>(c, N, a, N, b, K, threadIdx.x & 0x1f);
 }
 
 template <class T>
@@ -30,18 +31,18 @@ void test_gemm(){
 
 	std::printf("%s\n", get_type_name<T>().c_str());
 
-	cudaMallocHost(&a, N * N * sizeof(T));
-	cudaMallocHost(&b, N * N * sizeof(T));
+	cudaMallocHost(&a, N * K * sizeof(T));
+	cudaMallocHost(&b, K * N * sizeof(T));
 	cudaMallocHost(&c, N * N * sizeof(T));
 	cudaMallocHost(&d, N * N * sizeof(T));
 
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
-	for(unsigned i = 0; i < N * N; i++){
+	for(unsigned i = 0; i < K * N; i++){
 		a[i] = convert<T>(dist(mt));
 	}
-	for(unsigned i = 0; i < N * N; i++){
+	for(unsigned i = 0; i < K * N; i++){
 		b[i] = convert<T>(dist(mt));
 	}
 	for(unsigned i = 0; i < N * N; i++){
@@ -49,15 +50,15 @@ void test_gemm(){
 	}
 
 	cudaDeviceSynchronize();
-	test_gemm_16x16_kernel<T><<<1, 32>>>(d, a, b);
+	test_gemm_16x16_kernel<T, K><<<1, 32>>>(d, a, b);
 	cudaDeviceSynchronize();
 
 	float error = 0.0f;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
 			float sum = c[i + j * N];
-			for(unsigned k = 0; k < N; k++){
-				sum += convert<float>(a[k * N + i]) * convert<float>(b[j * N + k]);
+			for(unsigned k = 0; k < K; k++){
+				sum += convert<float>(a[k * N + i]) * convert<float>(b[j * K + k]);
 			}
 			error = std::max(error, std::abs(convert<float>(d[i + j * N]) - sum));
 		}
