@@ -3,22 +3,18 @@
 #include <cuda_fp16.h>
 
 namespace mtk {
+template <unsigned K = 16>
 __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
 	const auto lane = unique_id >> 4;
 	const auto y = unique_id & 0xf;
-	float tmp_a[16];
 	float tmp_c[16 * 16 / warp_size];
-
-	for (auto i = 0; i < 16; i++) {
-		tmp_a[i] = a[y + ldm_a * i];
-	}
 
 	for (auto i = 0; i < 16; i += 2) {
 		const auto x = i + lane;
 		float sum = 0.0f;
-		for (unsigned k = 0; k < 16; k+=1) {
-			sum = fmaf(tmp_a[k], b[x * ldm_b + k], sum);
+		for (unsigned k = 0; k < K; k+=1) {
+			sum = fmaf(a[y + ldm_a * k], b[x * ldm_b + k], sum);
 		}
 		tmp_c[i / 2] = sum;
 	}
@@ -29,6 +25,7 @@ __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, cons
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void gemm_core16x16(half* const c, const unsigned ldm_c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const auto y = unique_id & 0xf;
 	const auto x = (unique_id >> 4) << 3;
@@ -44,7 +41,7 @@ __device__ inline void gemm_core16x16(half* const c, const unsigned ldm_c, const
 		const auto a2 = __halves2half2(a[k * ldm_a + y], a[(k + 1) * ldm_a + y]);
 
 		const half2 *b2 = (half2*)(b + x * ldm_b + k);
-		for (i = 0; i < 8; i++) {
+		for (i = 0; i < K / 2; i++) {
 			sums[i] = __hfma2(a2, *(b2), sums[i]);
 			b2 += ldm_b / 2;
 		}
@@ -55,22 +52,18 @@ __device__ inline void gemm_core16x16(half* const c, const unsigned ldm_c, const
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void matmul_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
 	const auto lane = unique_id >> 4;
 	const auto y = unique_id & 0xf;
-	float tmp_a[16];
 	float tmp_c[16 * 16 / warp_size];
-
-	for (auto i = 0; i < 16; i++) {
-		tmp_a[i] = a[y + ldm_a * i];
-	}
 
 	for (auto i = 0; i < 16; i += 2) {
 		const auto x = i + lane;
 		float sum = 0.0f;
-		for (unsigned k = 0; k < 16; k+=1) {
-			sum = fmaf(tmp_a[k], b[x * ldm_b + k], sum);
+		for (unsigned k = 0; k < K; k+=1) {
+			sum = fmaf(a[y + ldm_a * k], b[x * ldm_b + k], sum);
 		}
 		tmp_c[i / 2] = sum;
 	}
@@ -81,6 +74,7 @@ __device__ inline void matmul_core16x16(float* const c, const unsigned ldm_c, co
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void matmul_core16x16(half* const c, const unsigned ldm_c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const auto y = unique_id & 0xf;
 	const auto x = (unique_id >> 4) << 3;
@@ -96,7 +90,7 @@ __device__ inline void matmul_core16x16(half* const c, const unsigned ldm_c, con
 		const auto a2 = __halves2half2(a[k * ldm_a + y], a[(k + 1) * ldm_a + y]);
 
 		const half2 *b2 = (half2*)(b + x * ldm_b + k);
-		for (i = 0; i < 8; i++) {
+		for (i = 0; i < K / 2; i++) {
 			sums[i] = __hfma2(a2, *(b2), sums[i]);
 			b2 += ldm_b / 2;
 		}
