@@ -3,7 +3,7 @@
 #include <cuda_fp16.h>
 
 namespace mtk {
-template <unsigned K = 16>
+template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
 	const auto lane = unique_id >> 4;
@@ -19,13 +19,17 @@ __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, cons
 		tmp_c[i / 2] = sum;
 	}
 
+	if (sync_before_storing) {
+		__syncthreads();
+	}
+
 	for (auto i = 0; i < 16; i += 2) {
 		const auto x = i + lane;
 		c[x * ldm_c + y] += tmp_c[i / 2];
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void gemm_core16x16(half* const c, const unsigned ldm_c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const auto y = unique_id & 0xf;
 	const auto x = (unique_id >> 4) << 3;
@@ -46,13 +50,18 @@ __device__ inline void gemm_core16x16(half* const c, const unsigned ldm_c, const
 			b2 += ldm_b / 2;
 		}
 	}
+
+	if (sync_before_storing) {
+		__syncthreads();
+	}
+
 	for (i = 0; i < 8; i++) {
 		const auto sum = sums[i];
 		c[(x + i) * ldm_c + y] += __low2half(sum) + __high2half(sum);
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void matmul_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
 	const auto lane = unique_id >> 4;
@@ -68,13 +77,17 @@ __device__ inline void matmul_core16x16(float* const c, const unsigned ldm_c, co
 		tmp_c[i / 2] = sum;
 	}
 
+	if (sync_before_storing) {
+		__syncthreads();
+	}
+
 	for (auto i = 0; i < 16; i += 2) {
 		const auto x = i + lane;
 		c[x * ldm_c + y] = tmp_c[i / 2];
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void matmul_core16x16(half* const c, const unsigned ldm_c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const auto y = unique_id & 0xf;
 	const auto x = (unique_id >> 4) << 3;
@@ -95,6 +108,11 @@ __device__ inline void matmul_core16x16(half* const c, const unsigned ldm_c, con
 			b2 += ldm_b / 2;
 		}
 	}
+
+	if (sync_before_storing) {
+		__syncthreads();
+	}
+
 	for (i = 0; i < 8; i++) {
 		const auto sum = sums[i];
 		c[(x + i) * ldm_c + y] = __low2half(sum) + __high2half(sum);
