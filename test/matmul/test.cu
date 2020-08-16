@@ -12,7 +12,7 @@ template <> std::string get_type_name<float>(){return "float";}
 template <> std::string get_type_name<half>(){return "half";}
 
 template <class T, class S>
-__device__ __host__ T convert(const S);
+__device__ __host__ T convert(const S a) {return static_cast<T>(a);}
 template <> __device__ __host__ float convert<float, float>(const float a) {return a;}
 template <> __device__ __host__ float convert<float, half >(const half  a) {return __half2float(a);}
 template <> __device__ __host__ half  convert<half , float>(const float a) {return __float2half(a);}
