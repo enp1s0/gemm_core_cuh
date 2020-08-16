@@ -52,14 +52,14 @@ void test_matmul(){
 	test_matmul_16x16_kernel<T, K><<<1, 32>>>(c, a, b);
 	cudaDeviceSynchronize();
 
-	float error = 0.0f;
+	double error = 0.0f;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
-			float sum = 0.0f;
+			double sum = 0.0f;
 			for(unsigned k = 0; k < K; k++){
-				sum += convert<float>(a[k * N + i]) * convert<float>(b[j * K + k]);
+				sum += convert<double>(a[k * N + i]) * convert<double>(b[j * K + k]);
 			}
-			error = std::max(error, std::abs(convert<float>(c[i + j * N]) - sum));
+			error = std::max(error, std::abs(convert<double>(c[i + j * N]) - sum));
 		}
 	}
 	std::printf("error = %e\n", error);
@@ -70,6 +70,7 @@ void test_matmul(){
 }
 
 int main() {
+	test_matmul<double>();
 	test_matmul<float>();
 	test_matmul<half >();
 }
