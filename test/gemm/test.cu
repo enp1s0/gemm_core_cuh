@@ -7,11 +7,12 @@ constexpr unsigned K = 32;
 
 template <class T>
 std::string get_type_name();
+template <> std::string get_type_name<double>(){return "double";}
 template <> std::string get_type_name<float>(){return "float";}
 template <> std::string get_type_name<half>(){return "half";}
 
 template <class T, class S>
-__device__ __host__ T convert(const S);
+__device__ __host__ T convert(const S a) {return static_cast<T>(a);}
 template <> __device__ __host__ float convert<float, float>(const float a) {return a;}
 template <> __device__ __host__ float convert<float, half >(const half  a) {return __half2float(a);}
 template <> __device__ __host__ half  convert<half , float>(const float a) {return __float2half(a);}
@@ -53,14 +54,14 @@ void test_gemm(){
 	test_gemm_16x16_kernel<T, K><<<1, 32>>>(d, a, b);
 	cudaDeviceSynchronize();
 
-	float error = 0.0f;
+	double error = 0.0;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
-			float sum = c[i + j * N];
+			double sum = c[i + j * N];
 			for(unsigned k = 0; k < K; k++){
-				sum += convert<float>(a[k * N + i]) * convert<float>(b[j * K + k]);
+				sum += convert<double>(a[k * N + i]) * convert<double>(b[j * K + k]);
 			}
-			error = std::max(error, std::abs(convert<float>(d[i + j * N]) - sum));
+			error = std::max(error, std::abs(convert<double>(d[i + j * N]) - sum));
 		}
 	}
 	std::printf("error = %e\n", error);
@@ -72,6 +73,7 @@ void test_gemm(){
 }
 
 int main() {
+	test_gemm<double>();
 	test_gemm<float>();
 	test_gemm<half >();
 }
