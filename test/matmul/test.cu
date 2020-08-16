@@ -52,10 +52,10 @@ void test_matmul(){
 	test_matmul_16x16_kernel<T, K><<<1, 32>>>(c, a, b);
 	cudaDeviceSynchronize();
 
-	double error = 0.0f;
+	double error = 0.0;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
-			double sum = 0.0f;
+			double sum = 0.0;
 			for(unsigned k = 0; k < K; k++){
 				sum += convert<double>(a[k * N + i]) * convert<double>(b[j * K + k]);
 			}

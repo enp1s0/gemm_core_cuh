@@ -54,7 +54,7 @@ void test_gemm(){
 	test_gemm_16x16_kernel<T, K><<<1, 32>>>(d, a, b);
 	cudaDeviceSynchronize();
 
-	double error = 0.0f;
+	double error = 0.0;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
 			double sum = c[i + j * N];
