@@ -54,14 +54,14 @@ void test_gemm(){
 	test_gemm_16x16_kernel<T, K><<<1, 32>>>(d, a, b);
 	cudaDeviceSynchronize();
 
-	float error = 0.0f;
+	double error = 0.0f;
 	for(unsigned i = 0; i < N; i++){
 		for(unsigned j = 0; j < N; j++){
-			float sum = c[i + j * N];
+			double sum = c[i + j * N];
 			for(unsigned k = 0; k < K; k++){
-				sum += convert<float>(a[k * N + i]) * convert<float>(b[j * K + k]);
+				sum += convert<double>(a[k * N + i]) * convert<double>(b[j * K + k]);
 			}
-			error = std::max(error, std::abs(convert<float>(d[i + j * N]) - sum));
+			error = std::max(error, std::abs(convert<double>(d[i + j * N]) - sum));
 		}
 	}
 	std::printf("error = %e\n", error);
@@ -73,6 +73,7 @@ void test_gemm(){
 }
 
 int main() {
+	test_gemm<double>();
 	test_gemm<float>();
 	test_gemm<half >();
 }
