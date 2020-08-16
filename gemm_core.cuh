@@ -4,6 +4,32 @@
 
 namespace mtk {
 template <unsigned K = 16, bool sync_before_storing = false>
+__device__ inline void gemm_core16x16(double* const c, const unsigned ldm_c, const double* const a, const unsigned ldm_a, const double* const b, const unsigned ldm_b, const unsigned unique_id) {
+	constexpr unsigned warp_size = 32;
+	const auto lane = unique_id >> 4;
+	const auto y = unique_id & 0xf;
+	double tmp_c[16 * 16 / warp_size];
+
+	for (auto i = 0; i < 16; i += 2) {
+		const auto x = i + lane;
+		double sum = 0.0;
+		for (unsigned k = 0; k < K; k += 1) {
+			sum = fma(a[y + ldm_a * k], b[x * ldm_b + k], sum);
+		}
+		tmp_c[i / 2] = sum;
+	}
+
+	if (sync_before_storing) {
+		__syncthreads();
+	}
+
+	for (auto i = 0; i < 16; i += 2) {
+		const auto x = i + lane;
+		c[x * ldm_c + y] += tmp_c[i / 2];
+	}
+}
+
+template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
 	const auto lane = unique_id >> 4;
