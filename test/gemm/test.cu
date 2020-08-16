@@ -7,6 +7,7 @@ constexpr unsigned K = 32;
 
 template <class T>
 std::string get_type_name();
+template <> std::string get_type_name<double>(){return "double";}
 template <> std::string get_type_name<float>(){return "float";}
 template <> std::string get_type_name<half>(){return "half";}
 
