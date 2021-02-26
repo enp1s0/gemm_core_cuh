@@ -172,7 +172,7 @@ __device__ inline void matmul_core16x16(half* const c, const unsigned ldm_c, con
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool Add_C = false>
 __device__ inline void gemv_core16x16(float* const c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
@@ -185,12 +185,18 @@ __device__ inline void gemv_core16x16(float* const c, const float* const a, cons
 
 	sum += __shfl_xor_sync(0xffffffff, sum, 16);
 
-	if(lane == 0) {
-		c[m] += sum;
+	if (Add_C) {
+		if(lane == 0) {
+			c[m] += sum;
+		}
+	} else {
+		if(lane == 0) {
+			c[m] = sum;
+		}
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool Add_C = false>
 __device__ inline void gemv_core16x16(half* const c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
@@ -209,12 +215,18 @@ __device__ inline void gemv_core16x16(half* const c, const half* const a, const 
 
 	s += __shfl_xor_sync(0xffffffff, s, 16);
 
-	if(lane == 0) {
-		c[m] += s;
+	if (Add_C) {
+		if(lane == 0) {
+			c[m] += s;
+		}
+	} else {
+		if(lane == 0) {
+			c[m] = s;
+		}
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool Add_C = false>
 __device__ inline void gevm_core16x16(float* const c, const float* const a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = lane * (K / 2);
@@ -227,12 +239,18 @@ __device__ inline void gevm_core16x16(float* const c, const float* const a, cons
 
 	sum += __shfl_xor_sync(0xffffffff, sum, 16);
 
-	if(lane == 0) {
-		c[n] += sum;
+	if (Add_C) {
+		if(lane == 0) {
+			c[n] += sum;
+		}
+	} else {
+		if(lane == 0) {
+			c[n] = sum;
+		}
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool Add_C = false>
 __device__ inline void gevm_core16x16(half* const c, const half* const a, const half* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = lane * (K / 2);
@@ -249,12 +267,18 @@ __device__ inline void gevm_core16x16(half* const c, const half* const a, const 
 
 	s += __shfl_xor_sync(0xffffffff, s, 16);
 
-	if(lane == 0) {
-		c[n] += s;
+	if (Add_C) {
+		if(lane == 0) {
+			c[n] += s;
+		}
+	} else {
+		if(lane == 0) {
+			c[n] = s;
+		}
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool Add_C = false>
 __device__ inline void ger_core16x16(float* const c, const unsigned ldm_c, const float* const a, const float* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
@@ -264,11 +288,15 @@ __device__ inline void ger_core16x16(float* const c, const unsigned ldm_c, const
 	for (unsigned i = 0; i < (K / 2); i++) {
 		const auto b1 = b[n + i];
 		const auto c1 = a1 * b1;
-		c[ldm_c * (n + i) + m] += c1;
+		if (Add_C) {
+			c[ldm_c * (n + i) + m] += c1;
+		} else {
+			c[ldm_c * (n + i) + m] = c1;
+		}
 	}
 }
 
-template <unsigned K = 16>
+template <unsigned K = 16, bool Add_C = false>
 __device__ inline void ger_core16x16(half* const c, const unsigned ldm_c, const half* const a, const half* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
@@ -279,8 +307,13 @@ __device__ inline void ger_core16x16(half* const c, const unsigned ldm_c, const 
 	for (unsigned i = 0; i < (K / 2) / 2; i++) {
 		const auto b2 = *reinterpret_cast<const half2*>(b + n + i * 2);
 		const auto c2 = __hmul2(a2, b2);
-		c[ldm_c * (n + i * 2 + 0) + m] += c2.x;
-		c[ldm_c * (n + i * 2 + 1) + m] += c2.y;
+		if (Add_C) {
+			c[ldm_c * (n + i * 2 + 0) + m] += c2.x;
+			c[ldm_c * (n + i * 2 + 1) + m] += c2.y;
+		} else {
+			c[ldm_c * (n + i * 2 + 0) + m] = c2.x;
+			c[ldm_c * (n + i * 2 + 1) + m] = c2.y;
+		}
 	}
 }
 } // namespace gemm_core
