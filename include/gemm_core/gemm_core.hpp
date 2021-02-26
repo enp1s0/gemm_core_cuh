@@ -4,6 +4,51 @@
 
 namespace mtk {
 namespace gemm_core {
+
+template <unsigned K, char OP_A, char OP_B, bool sync_before_storing = false, class T>
+__device__ inline void gemm_core16x16(
+		const T alpha,
+		const T* const a, const unsigned ldm_a,
+		const T* const b, const unsigned ldm_b,
+		const T beta,
+		T* const c, const unsigned ldm_c
+		) {
+	constexpr unsigned warp_size = 32;
+	const auto unique_id = threadIdx.x & 0x1f;
+	const auto lane = unique_id >> 4;
+	const auto y = unique_id & 0xf;
+	T tmp_c[16 * 16 / warp_size];
+
+	for (auto i = 0; i < 16; i += 2) {
+		const auto x = i + lane;
+		T sum = 0.0;
+		for (unsigned k = 0; k < K; k += 1) {
+			T a_v, b_v;
+			if constexpr (OP_A == 'N') {
+				a_v = a[y + ldm_a * k];
+			} else {
+				a_v = a[k + ldm_a * y];
+			}
+			if constexpr (OP_B == 'N') {
+				b_v = b[x * ldm_b + k];
+			} else {
+				b_v = b[k * ldm_b + x];
+			}
+			sum = a_v * b_v + sum;
+		}
+		tmp_c[i / 2] = sum;
+	}
+
+	if (sync_before_storing) {
+		__syncthreads();
+	}
+
+	for (auto i = 0; i < 16; i += 2) {
+		const auto x = i + lane;
+		c[x * ldm_c + y] = alpha * tmp_c[i / 2] + beta * c[x * ldm_c + y];
+	}
+}
+
 template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void gemm_core16x16(double* const c, const unsigned ldm_c, const double* const a, const unsigned ldm_a, const double* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
