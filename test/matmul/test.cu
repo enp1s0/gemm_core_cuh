@@ -1,6 +1,6 @@
 #include <iostream>
 #include <random>
-#include <gemm_core.cuh>
+#include <gemm_core/gemm_core.hpp>
 
 constexpr unsigned N = 16;
 constexpr unsigned K = 32;
@@ -20,7 +20,7 @@ template <> __device__ __host__ half  convert<half , half >(const half  a) {retu
 
 template <class T, unsigned K>
 __global__ void test_matmul_16x16_kernel(T* const c, const T* const a, const T* const b){
-	mtk::matmul_core16x16<K>(c, N, a, N, b, K, threadIdx.x & 0x1f);
+	mtk::gemm_core::matmul_core16x16<K>(c, N, a, N, b, K, threadIdx.x & 0x1f);
 }
 
 template <class T>
