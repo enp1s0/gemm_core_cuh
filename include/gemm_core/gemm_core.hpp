@@ -172,13 +172,14 @@ __device__ inline void matmul_core16x16(half* const c, const unsigned ldm_c, con
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void gemv_core16x16(float* const c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
-	const unsigned n = lane * 8;
+	const unsigned n = lane * K / 2;
 
 	float sum = 0;
-	for (unsigned i = 0; i < 8; i++) {
+	for (unsigned i = 0; i < K / 2; i++) {
 		sum += a[m + (n + i) * ldm_a] * b[n + i];
 	}
 
@@ -189,13 +190,14 @@ __device__ inline void gemv_core16x16(float* const c, const float* const a, cons
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void gemv_core16x16(half* const c, const half* const a, const unsigned ldm_a, const half* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
-	const unsigned n = lane * 8;
+	const unsigned n = lane * K / 2;
 
 	half2 sum = __float2half2_rn(0.0f);
-	for (unsigned i = 0; i < 8 / 2; i++) {
+	for (unsigned i = 0; i < (K / 2) / 2; i++) {
 		half2 a2;
 		a2.x = a[m + (n + 2 * i + 0) * ldm_a];
 		a2.y = a[m + (n + 2 * i + 1) * ldm_a];
@@ -212,13 +214,14 @@ __device__ inline void gemv_core16x16(half* const c, const half* const a, const 
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void gevm_core16x16(float* const c, const float* const a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
-	const unsigned m = lane * 8;
+	const unsigned m = lane * (K / 2);
 	const unsigned n = unique_id & 0xf;
 
 	float sum = 0;
-	for (unsigned i = 0; i < 8; i++) {
+	for (unsigned i = 0; i < K / 2; i++) {
 		sum += a[m + i] * b[n * ldm_b + m + i];
 	}
 
@@ -229,13 +232,14 @@ __device__ inline void gevm_core16x16(float* const c, const float* const a, cons
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void gevm_core16x16(half* const c, const half* const a, const half* const b, const unsigned ldm_b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
-	const unsigned m = lane * 8;
+	const unsigned m = lane * (K / 2);
 	const unsigned n = unique_id & 0xf;
 
 	half2 sum = __float2half2_rn(0.0f);
-	for (unsigned i = 0; i < 8 / 2; i++) {
+	for (unsigned i = 0; i < (K / 2) / 2; i++) {
 		const half2 a2 = *reinterpret_cast<const half2*>(a + m + i * 2);
 		const half2 b2 = *reinterpret_cast<const half2*>(b + n * ldm_b + m + 2 * i);
 		sum = __hfma2(a2, b2, sum);
@@ -250,27 +254,29 @@ __device__ inline void gevm_core16x16(half* const c, const half* const a, const 
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void ger_core16x16(float* const c, const unsigned ldm_c, const float* const a, const float* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
-	const unsigned n = lane * 8;
+	const unsigned n = lane * (K / 2);
 
 	const auto a1 = a[m];
-	for (unsigned i = 0; i < 8; i++) {
+	for (unsigned i = 0; i < (K / 2); i++) {
 		const auto b1 = b[n + i];
 		const auto c1 = a1 * b1;
 		c[ldm_c * (n + i) + m] += c1;
 	}
 }
 
+template <unsigned K = 16>
 __device__ inline void ger_core16x16(half* const c, const unsigned ldm_c, const half* const a, const half* const b, const unsigned unique_id) {
 	const unsigned lane = unique_id >> 4;
 	const unsigned m = unique_id & 0xf;
-	const unsigned n = lane * 8;
+	const unsigned n = lane * (K / 2);
 
 	const auto a2 = __halves2half2(a[m], a[m]);
 
-	for (unsigned i = 0; i < 8 / 2; i++) {
+	for (unsigned i = 0; i < (K / 2) / 2; i++) {
 		const auto b2 = *reinterpret_cast<const half2*>(b + n + i * 2);
 		const auto c2 = __hmul2(a2, b2);
 		c[ldm_c * (n + i * 2 + 0) + m] += c2.x;
