@@ -1,6 +1,6 @@
 #include <iostream>
 #include <random>
-#include <gemm_core.cuh>
+#include <gemm_core/gemm_core.hpp>
 
 constexpr unsigned N = 16;
 
@@ -18,7 +18,7 @@ template <> __device__ __host__ half  convert<half , half >(const half  a) {retu
 
 template <class T>
 __global__ void test_gevm_16x16_kernel(T* const c, const T* const a, const T* const b){
-	mtk::gevm_core16x16(c, a, b, N, threadIdx.x & 0x1f);
+	mtk::gemm_core::gevm_core16x16(c, a, b, N, threadIdx.x & 0x1f);
 }
 
 template <class T>
