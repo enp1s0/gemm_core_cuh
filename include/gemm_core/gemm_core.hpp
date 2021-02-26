@@ -1,8 +1,9 @@
-#ifndef __GEMM_CORE_CUH__
-#define __GEMM_CORE_CUH__
+#ifndef __GEMM_CORE_HPP__
+#define __GEMM_CORE_HPP__
 #include <cuda_fp16.h>
 
 namespace mtk {
+namespace gemm_core {
 template <unsigned K = 16, bool sync_before_storing = false>
 __device__ inline void gemm_core16x16(double* const c, const unsigned ldm_c, const double* const a, const unsigned ldm_a, const double* const b, const unsigned ldm_b, const unsigned unique_id) {
 	constexpr unsigned warp_size = 32;
@@ -276,6 +277,7 @@ __device__ inline void ger_core16x16(half* const c, const unsigned ldm_c, const 
 		c[ldm_c * (n + i * 2 + 1) + m] += c2.y;
 	}
 }
+} // namespace gemm_core
 } // namespace mtk
 
 #endif /* end of include guard */
