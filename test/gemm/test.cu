@@ -20,7 +20,12 @@ template <> __device__ __host__ half  convert<half , half >(const half  a) {retu
 
 template <class T, unsigned K>
 __global__ void test_gemm_16x16_kernel(T* const c, const T* const a, const T* const b){
-	mtk::gemm_core::gemm_core16x16<K>(c, N, a, N, b, K, threadIdx.x & 0x1f);
+	mtk::gemm_core::gemm_core16x16<K, 'N', 'N'>(
+			convert<T>(1.0f),
+			a, N,
+			b, K,
+			convert<T>(1.0f),
+			c, N);
 }
 
 template <class T>
