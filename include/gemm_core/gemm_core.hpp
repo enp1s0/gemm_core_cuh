@@ -43,9 +43,16 @@ __device__ inline void gemm_core16x16(
 		__syncthreads();
 	}
 
-	for (auto i = 0; i < 16; i += 2) {
-		const auto x = i + lane;
-		c[x * ldm_c + y] = alpha * tmp_c[i / 2] + beta * c[x * ldm_c + y];
+	if (beta == 0.0f) {
+		for (auto i = 0; i < 16; i += 2) {
+			const auto x = i + lane;
+			c[x * ldm_c + y] = alpha * tmp_c[i / 2] + beta * c[x * ldm_c + y];
+		}
+	} else {
+		for (auto i = 0; i < 16; i += 2) {
+			const auto x = i + lane;
+			c[x * ldm_c + y] = alpha * tmp_c[i / 2];
+		}
 	}
 }
 
